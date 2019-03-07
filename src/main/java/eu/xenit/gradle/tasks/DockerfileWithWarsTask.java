@@ -4,6 +4,7 @@ import com.bmuschko.gradle.docker.tasks.image.Dockerfile;
 import de.schlichtherle.truezip.file.TArchiveDetector;
 import de.schlichtherle.truezip.file.TFile;
 import groovy.lang.Closure;
+import java.util.concurrent.Callable;
 import java.util.function.BooleanSupplier;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.tasks.Input;
@@ -36,7 +37,7 @@ public class DockerfileWithWarsTask extends Dockerfile implements LabelConsumerT
     /**
      * Map of directories in the tomcat folder to the war file to place there
      */
-    private Map<String, List<Supplier<File>>> warFiles = new HashMap<>();
+    private Map<String, List<Supplier<java.io.File>>> warFiles = new HashMap<>();
 
     /**
      * Target directory inside the docker container where war files will be placed
@@ -93,7 +94,7 @@ public class DockerfileWithWarsTask extends Dockerfile implements LabelConsumerT
      * @param destinationDir
      * @param logName
      */
-    private void improveLog4j(File destinationDir, String logName) {
+    private void improveLog4j(java.io.File destinationDir, String logName) {
         Path path = destinationDir.toPath().resolve(Paths.get("WEB-INF", "classes", "log4j.properties"));
         if (Files.exists(path)) {
             getLogger().info("Prefixing logs for " + destinationDir.getName() + " with [" + logName + "]");
@@ -119,7 +120,7 @@ public class DockerfileWithWarsTask extends Dockerfile implements LabelConsumerT
      * @param warFile
      * @param destinationDir
      */
-    private static void unzipWar(File warFile, File destinationDir) {
+    private static void unzipWar(java.io.File warFile, java.io.File destinationDir) {
         Util.withWar(warFile, archive -> {
             TFile directory = new TFile(destinationDir);
             directory.mkdirs();
@@ -147,12 +148,12 @@ public class DockerfileWithWarsTask extends Dockerfile implements LabelConsumerT
         if (this.baseImage != null)
             throw new IllegalStateException("Base image can only be set once.");
         this.baseImage = baseImage;
-        super.from(new Closure<String>(this) {
+        super.from(getProject().provider(new Callable<From>() {
             @Override
-            public String call() {
-                return baseImage.get();
+            public From call() throws Exception {
+                return new From(baseImage.get());
             }
-        });
+        }));
     }
 
     public void setBaseImage(Closure<String> baseImage) {
@@ -166,19 +167,19 @@ public class DockerfileWithWarsTask extends Dockerfile implements LabelConsumerT
 
 
     @Deprecated
-    public void setAlfrescoWar(File alfrescoWar) {
+    public void setAlfrescoWar(java.io.File alfrescoWar) {
         getLogger().warn("setAlfrescoWar(alfrescoWar) is deprecated and will be removed in xenit-gradle-plugins 4.0. Use addWar(\"alfresco\", alfrescoWar) instead.");
         addWar("alfresco", alfrescoWar);
     }
 
     @Deprecated
-    public void setShareWar(File shareWar) {
+    public void setShareWar(java.io.File shareWar) {
         getLogger().warn("setShareWar(shareWar) is deprecated and will be removed in xenit-gradle-plugins 4.0. Use addWar(\"share\", shareWar) instead.");
         addWar("share", shareWar);
     }
 
     @InputFiles
-    public Collection<File> getWarFiles() {
+    public Collection<java.io.File> getWarFiles() {
         return warFiles.values().stream()
                 .flatMap(Collection::stream)
                 .map(Supplier::get)
@@ -191,11 +192,11 @@ public class DockerfileWithWarsTask extends Dockerfile implements LabelConsumerT
         withLabels(task);
     }
 
-    public void addWar(String name, File file) {
+    public void addWar(String name, java.io.File file) {
         addWar(name, () -> file);
     }
 
-    public void addWar(String name, Supplier<File> file) {
+    public void addWar(String name, Supplier<java.io.File> file) {
         if (!warFiles.containsKey(name)) {
             warFiles.put(name, new LinkedList<>());
         }
@@ -212,7 +213,7 @@ public class DockerfileWithWarsTask extends Dockerfile implements LabelConsumerT
     public void create() {
         // Unpack & COPY into container
         warFiles.forEach((name, wars) -> {
-            File destinationDir = getDestFile().toPath().resolveSibling(name).toFile();
+            java.io.File destinationDir = getDestFile().getAsFile().get().toPath().resolveSibling(name).toFile();
             if (destinationDir.exists()) {
                 try {
                     TFile.rm_r(destinationDir);

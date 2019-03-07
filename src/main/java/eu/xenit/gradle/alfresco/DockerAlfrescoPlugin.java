@@ -65,7 +65,7 @@ public class DockerAlfrescoPlugin implements Plugin<Project> {
     private DockerfileWithWarsTask getDockerFileTask(DockerAlfrescoExtension dockerAlfrescoExtension, Project project1) {
         DockerfileWithWarsTask dockerfile = project1.getTasks().create("createDockerFile",
                 DockerfileWithWarsTask.class);
-        dockerfile.setDestFile(new File(project1.getBuildDir().getAbsolutePath() + "/docker/Dockerfile"));
+        dockerfile.getDestFile().set(new File(project1.getBuildDir().getAbsolutePath() + "/docker/Dockerfile"));
         dockerfile.setBaseImage(dockerAlfrescoExtension.getBaseImageSupplier());
         return dockerfile;
     }
