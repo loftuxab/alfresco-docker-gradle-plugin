@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
 
 import static eu.xenit.gradle.tasks.VersionMatchChecking.getCanAddWarsCheckCommands;
 
-public class DockerfileWithWarsTask extends Dockerfile implements LabelConsumerTask {
+public class DockerfileWithWarsTask extends DockerfileWithCopyTask implements LabelConsumerTask {
+
     /**
      * Base image used to build the dockerfile
      */
